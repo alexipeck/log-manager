@@ -58,6 +58,7 @@ impl fmt::Display for Level {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Log<S> {
+    id: i32,
     source: S,
     timestamp: String,
     level: Level,
@@ -81,6 +82,7 @@ macro_rules! ok_or_return_err {
 impl<S: Serialize + DeserializeOwned> Log<S> {
     pub fn from(value: LogModel) -> Result<Log<S>, Error> {
         Ok(Self {
+            id: value.id,
             source: ok_or_return_err!(serde_json::from_str(&value.source), "source"),
             timestamp: ok_or_return_err!(serde_json::from_str(&value.timestamp), "timestamp"),
             level: ok_or_return_err!(serde_json::from_str(&value.level), "level"),

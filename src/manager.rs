@@ -6,7 +6,9 @@ use std::{
     },
 };
 
-use diesel::{dsl::max, ExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection};
+use diesel::{
+    dsl::max, ExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection, TextExpressionMethods,
+};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tokio::sync::Notify;
 use tracing::{debug, error, info, warn};
@@ -15,7 +17,10 @@ use crate::{
     database::{establish_connection, model::LogModel, run_migrations, MIGRATIONS},
     error::{BuilderError, DieselResultError, Error},
     logs::{Log, SimpleLog},
-    schema::log::{self as log_table, dsl::log as log_data, dsl::source as source_db},
+    schema::log::{
+        self as log_table, dsl::content as content_db, dsl::log as log_data,
+        dsl::source as source_db,
+    },
     serialize_or_return_err, NEXT_LOG_ID,
 };
 
@@ -101,11 +106,7 @@ fn get_next_log_id(database_url: &str) -> Result<u32, Error> {
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum Pagination {
-    Page {
-        page: usize,
-        page_size: usize,
-        offset: i32,
-    },
+    Page { page: usize, page_size: usize },
 }
 
 pub struct LogManager<S: Serialize + DeserializeOwned> {
@@ -158,20 +159,27 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
         &self,
         source: Option<S>,
         pagination: Option<Pagination>,
-        content_search: &str,
+        content_search: Option<&str>,
     ) -> Result<Vec<Log<S>>, Error> {
         let mut sqlite_connection = establish_connection(&self.database_url)?;
-        let mut data = match source {
-            Some(source) => {
-                let source_serialized = serialize_or_return_err!(&source, "source");
-                debug!("{:?}", source_serialized);
-                log_data
-                    .filter(source_db.eq(source_serialized))
-                    .load::<LogModel>(&mut sqlite_connection)
+        let mut query = log_data.into_boxed();
+        if let Some(source) = source {
+            let source_serialized = serialize_or_return_err!(&source, "source");
+            query = query.filter(source_db.eq(source_serialized))
+        }
+        if let Some(pagination) = pagination {
+            match pagination {
+                Pagination::Page { page, page_size } => {
+                    query = query
+                        .limit(page_size as i64)
+                        .offset(((page - 1) * page_size) as i64)
+                }
             }
-            None => log_data.load::<LogModel>(&mut sqlite_connection),
-        };
-        match data {
+        }
+        if let Some(content_search) = content_search {
+            query = query.filter(content_db.like(format!("%{content_search}%")));
+        }
+        match query.load::<LogModel>(&mut sqlite_connection) {
             Ok(log_models) => {
                 //Not the most efficient way to do this
                 let mut logs = Vec::new();

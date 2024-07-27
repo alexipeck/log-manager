@@ -3,7 +3,7 @@ use std::io::stdout;
 use log_manager::{
     error::Error,
     logs::{Level, SimpleLog},
-    manager::Builder,
+    manager::{Builder, Pagination},
 };
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
@@ -70,24 +70,65 @@ async fn main() -> Result<(), Error> {
         .database_url("/data/indev_log_database.sql".into())
         .build::<LogSource>()
         .await?;
-    log_manager.save_log(
-        SimpleLog::generate_log(Level::Info, "src/test".into(), "Testing".into()),
-        LogSource::SomeOtherSource(SubSource::Thermometer),
-    )?;
-    log_manager.save_log(
-        SimpleLog::generate_log(Level::Info, "src/test".into(), "Testing".into()),
-        LogSource::Agent(uuid!("f068c603-b2d8-4aab-a06b-478dea93bcea")),
-    )?;
-    let results = log_manager.search(
-        Some(LogSource::Agent(uuid!(
-            "f068c603-b2d8-4aab-a06b-478dea93bcea"
-        ))),
-        None,
-        "".into(),
-    )?;
-    debug!("Count: {}", results.len());
-    /* for result in results {
-        debug!("{:?}", result);
+    /* {
+        let results = log_manager.search(
+            Some(LogSource::Agent(uuid!(
+                "f068c603-b2d8-4aab-a06b-478dea93bcea"
+            ))),
+            None,
+            "".into(),
+        )?;
+        debug!("Count: {}", results.len());
+        for result in results {
+            debug!("{:?}", result);
+        }
     } */
+    /* {
+        let results = log_manager.search(
+            Some(LogSource::Agent(uuid!(
+                "f068c603-b2d8-4aab-a06b-478dea93bcea"
+            ))),
+            Some(Pagination::Page {
+                page: 1,
+                page_size: 2,
+            }),
+            "".into(),
+        )?;
+        //debug!("Count: {}", results.len());
+        for result in results {
+            debug!("{:?}", result);
+        }
+    } */
+    for i in 1..50 {
+        /* log_manager.save_log(
+            SimpleLog::generate_log(Level::Info, "src/test".into(), i.to_string()),
+            LogSource::SomeOtherSource(SubSource::Thermometer),
+        )?; */
+        log_manager.save_log(
+            SimpleLog::generate_log(Level::Info, "src/test".into(), i.to_string()),
+            LogSource::Agent(uuid!("f068c603-b2d8-4aab-a06b-478dea93bcea")),
+        )?;
+    }
+    for i in 1..10 {
+        let results = log_manager.search(
+            Some(LogSource::Agent(uuid!(
+                "f068c603-b2d8-4aab-a06b-478dea93bcea"
+            ))),
+            Some(Pagination::Page {
+                page: i as usize,
+                page_size: 2,
+            }),
+            "".into(),
+        )?;
+        debug!("Page {i}");
+        for result in results {
+            debug!("{:?}", result);
+        }
+    }
+    let results = log_manager.search(None, None, "10".into())?;
+    debug!("Search test");
+    for result in results {
+        debug!("{:?}", result);
+    }
     Ok(())
 }
