@@ -15,8 +15,12 @@ pub enum Error {
     RunningMigrations(String),
     #[error("SerializingField({0}, {1})")]
     SerializingField(String, SerdeError),
+    #[error("DeserializingField({0}, {1})")]
+    DeserializingField(String, SerdeError),
     #[error("Builder({0})")]
     Builder(BuilderError),
+    #[error("Errors({:?})", 0)]
+    Errors(Vec<Self>),
 }
 
 #[derive(Error, Debug)]

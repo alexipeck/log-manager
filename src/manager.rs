@@ -6,17 +6,17 @@ use std::{
     },
 };
 
-use diesel::{dsl::max, QueryDsl, RunQueryDsl, SqliteConnection};
-use serde::{de::DeserializeOwned, Serialize};
+use diesel::{dsl::max, ExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tokio::sync::Notify;
-use tracing::info;
+use tracing::{debug, error, info, warn};
 
 use crate::{
     database::{establish_connection, model::LogModel, run_migrations, MIGRATIONS},
     error::{BuilderError, DieselResultError, Error},
-    logs::SimpleLog,
-    schema::log::{self as log_table, dsl::log as log_data},
-    NEXT_LOG_ID,
+    logs::{Log, SimpleLog},
+    schema::log::{self as log_table, dsl::log as log_data, dsl::source as source_db},
+    serialize_or_return_err, NEXT_LOG_ID,
 };
 
 #[derive(Debug)]
@@ -99,14 +99,23 @@ fn get_next_log_id(database_url: &str) -> Result<u32, Error> {
     Ok(max_id as u32)
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub enum Pagination {
+    Page {
+        page: usize,
+        page_size: usize,
+        offset: i32,
+    },
+}
+
 pub struct LogManager<S: Serialize + DeserializeOwned> {
     stop: Arc<AtomicBool>,
     stop_notify: Arc<Notify>,
     database_url: String,
     _phantom: PhantomData<S>,
 }
-//add an option on the builder which configures whether this server should stop with ctrl+c or wait for the stop signal
 impl<S: Serialize + DeserializeOwned> LogManager<S> {
+    //TODO: add an option on the builder which configures whether this server should stop with ctrl+c or wait for the stop signal
     async fn new(
         stop: Arc<AtomicBool>,
         stop_notify: Arc<Notify>,
@@ -137,12 +146,52 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
     }
 
     pub fn save_log(&self, log: SimpleLog, source: S) -> Result<usize, Error> {
-        let conn = &mut establish_connection(&self.database_url)?;
+        let sqlite_connection = &mut establish_connection(&self.database_url)?;
         let log = LogModel::from(log, source)?;
         let insert_into = diesel::insert_into(log_table::table);
-        match insert_into.values(log).execute(conn) {
+        match insert_into.values(log).execute(sqlite_connection) {
             Ok(rows_affected) => Ok(rows_affected),
             Err(err) => Err(Error::DieselResult(DieselResultError(err))),
+        }
+    }
+    pub fn search(
+        &self,
+        source: Option<S>,
+        pagination: Option<Pagination>,
+        content_search: &str,
+    ) -> Result<Vec<Log<S>>, Error> {
+        let mut sqlite_connection = establish_connection(&self.database_url)?;
+        let mut data = match source {
+            Some(source) => {
+                let source_serialized = serialize_or_return_err!(&source, "source");
+                debug!("{:?}", source_serialized);
+                log_data
+                    .filter(source_db.eq(source_serialized))
+                    .load::<LogModel>(&mut sqlite_connection)
+            }
+            None => log_data.load::<LogModel>(&mut sqlite_connection),
+        };
+        match data {
+            Ok(log_models) => {
+                //Not the most efficient way to do this
+                let mut logs = Vec::new();
+                let mut errors = Vec::new();
+                log_models
+                    .into_iter()
+                    .for_each(|model| match Log::<S>::from(model) {
+                        Ok(log_model) => logs.push(log_model),
+                        Err(err) => errors.push(err),
+                    });
+                if !errors.is_empty() {
+                    warn!("{}", Error::Errors(errors));
+                }
+                Ok(logs)
+            }
+            Err(err) => {
+                let err = Error::DieselResult(DieselResultError(err));
+                error!("{err}");
+                return Err(err);
+            }
         }
     }
     pub fn stop(&self) {

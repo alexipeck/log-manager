@@ -8,7 +8,7 @@ use log_manager::{
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Layer, Registry};
-use uuid::Uuid;
+use uuid::{uuid, Uuid};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubSource {
@@ -74,5 +74,20 @@ async fn main() -> Result<(), Error> {
         SimpleLog::generate_log(Level::Info, "src/test".into(), "Testing".into()),
         LogSource::SomeOtherSource(SubSource::Thermometer),
     )?;
+    log_manager.save_log(
+        SimpleLog::generate_log(Level::Info, "src/test".into(), "Testing".into()),
+        LogSource::Agent(uuid!("f068c603-b2d8-4aab-a06b-478dea93bcea")),
+    )?;
+    let results = log_manager.search(
+        Some(LogSource::Agent(uuid!(
+            "f068c603-b2d8-4aab-a06b-478dea93bcea"
+        ))),
+        None,
+        "".into(),
+    )?;
+    debug!("Count: {}", results.len());
+    /* for result in results {
+        debug!("{:?}", result);
+    } */
     Ok(())
 }

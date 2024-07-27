@@ -14,7 +14,10 @@ macro_rules! serialize_or_return_err {
         match serde_json::to_string(&$t) {
             Ok(t) => t,
             Err(err) => {
-                let err = Error::SerializingField($field_name.to_string(), SerdeError(err));
+                let err = crate::error::Error::SerializingField(
+                    $field_name.to_string(),
+                    crate::error::SerdeError(err),
+                );
                 tracing::warn!("Error serializing field {}: {err}", $field_name);
                 return Err(err);
             }

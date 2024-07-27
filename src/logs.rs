@@ -1,5 +1,9 @@
+use crate::{
+    database::model::LogModel,
+    error::{Error, SerdeError},
+};
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::fmt::{self, Debug};
 use tracing::metadata::Level as TracingLevel;
 
@@ -59,6 +63,31 @@ pub struct Log<S> {
     level: Level,
     location: String,
     content: String,
+}
+
+macro_rules! ok_or_return_err {
+    ($t:expr, $field_name:expr) => {
+        match $t {
+            Ok(t) => t,
+            Err(err) => {
+                let err = Error::DeserializingField($field_name.to_string(), SerdeError(err));
+                tracing::warn!("Error deserializing field {}: {err}", $field_name);
+                return Err(err);
+            }
+        }
+    };
+}
+
+impl<S: Serialize + DeserializeOwned> Log<S> {
+    pub fn from(value: LogModel) -> Result<Log<S>, Error> {
+        Ok(Self {
+            source: ok_or_return_err!(serde_json::from_str(&value.source), "source"),
+            timestamp: ok_or_return_err!(serde_json::from_str(&value.timestamp), "timestamp"),
+            level: ok_or_return_err!(serde_json::from_str(&value.level), "level"),
+            location: ok_or_return_err!(serde_json::from_str(&value.location), "location"),
+            content: ok_or_return_err!(serde_json::from_str(&value.content), "content"),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
