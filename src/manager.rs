@@ -7,7 +7,8 @@ use std::{
 };
 
 use diesel::{
-    dsl::max, ExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection, TextExpressionMethods,
+    dsl::{count_star, max},
+    ExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection, TextExpressionMethods,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tokio::sync::Notify;
@@ -167,13 +168,27 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
         source: Option<S>,
         pagination: Option<Pagination>,
         content_search: Option<&str>,
-    ) -> Result<Vec<Log<S>>, Error> {
+    ) -> Result<(i64, Vec<Log<S>>), Error> {
         let mut sqlite_connection = establish_connection(&self.database_url)?;
         let mut query = log_data.into_boxed();
+        let mut count_query = log_data.into_boxed();
         if let Some(source) = source {
             let source_serialized = serialize_or_return_err!(&source, "source");
-            query = query.filter(source_db.eq(source_serialized))
+            query = query.filter(source_db.eq(source_serialized.to_owned()));
+            count_query = count_query.filter(source_db.eq(source_serialized));
         }
+        if let Some(content_search) = content_search {
+            query = query.filter(content_db.like(format!("%{content_search}%")));
+            count_query = count_query.filter(content_db.like(format!("%{content_search}%")));
+        }
+        let total_count = count_query
+            .select(count_star())
+            .first::<i64>(&mut sqlite_connection)
+            .map_err(|err| {
+                let err = Error::DieselResult(DieselResultError(err));
+                error!("{err}");
+                err
+            })?;
         if let Some(pagination) = pagination {
             match pagination {
                 Pagination::Page { page, page_size } => {
@@ -182,9 +197,6 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
                         .offset(((page - 1) * page_size) as i64)
                 }
             }
-        }
-        if let Some(content_search) = content_search {
-            query = query.filter(content_db.like(format!("%{content_search}%")));
         }
         match query.load::<LogModel>(&mut sqlite_connection) {
             Ok(log_models) => {
@@ -200,7 +212,7 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
                 if !errors.is_empty() {
                     warn!("{}", Error::Errors(errors));
                 }
-                Ok(logs)
+                Ok((total_count, logs))
             }
             Err(err) => {
                 let err = Error::DieselResult(DieselResultError(err));
@@ -209,6 +221,7 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
             }
         }
     }
+
     pub fn stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
         self.stop_notify.notify_waiters();

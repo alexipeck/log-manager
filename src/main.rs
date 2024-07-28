@@ -1,7 +1,7 @@
 use log_manager::{
     error::Error,
     logs::{Level, SimpleLog},
-    manager::{Builder, Pagination},
+    manager::Pagination,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -109,7 +109,7 @@ async fn main() -> Result<(), Error> {
     }
     for i in 1..10 {
         let now = Instant::now();
-        let results = log_manager.search(
+        let (total_count, results) = log_manager.search(
             Some(LogSource::Agent(uuid!(
                 "f068c603-b2d8-4aab-a06b-478dea93bcea"
             ))),
@@ -119,14 +119,15 @@ async fn main() -> Result<(), Error> {
             }),
             "".into(),
         )?;
+        debug!("Total before pagination: {total_count}");
         debug!("{}ns", now.elapsed().as_nanos());
         debug!("Page {i}");
         for result in results {
             debug!("{:?}", result);
         }
     }
-    let results = log_manager.search(None, None, "10".into())?;
-    debug!("Search test");
+    let (total_count, results) = log_manager.search(None, None, "10".into())?;
+    debug!("Search test (total before pagination: {total_count})");
     for result in results {
         debug!("{:?}", result);
     }
