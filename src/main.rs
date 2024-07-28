@@ -4,7 +4,10 @@ use log_manager::{
     manager::{Builder, Pagination},
 };
 use serde::{Deserialize, Serialize};
-use std::{io::stdout, time::Instant};
+use std::{
+    io::stdout,
+    time::{Duration, Instant},
+};
 use tracing::{debug, info};
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Layer, Registry};
 use uuid::{uuid, Uuid};
@@ -65,7 +68,7 @@ async fn main() -> Result<(), Error> {
     }
 
     info!("Running");
-    let log_manager = Builder::default()
+    let log_manager = log_manager::manager::Builder::default()
         .database_url("/data/indev_log_database.sql".into())
         .build::<LogSource>()
         .await?;
@@ -127,5 +130,7 @@ async fn main() -> Result<(), Error> {
     for result in results {
         debug!("{:?}", result);
     }
+    log_manager.stop();
+    tokio::time::sleep(Duration::from_secs(1)).await;
     Ok(())
 }

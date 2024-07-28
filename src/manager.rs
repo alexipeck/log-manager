@@ -94,11 +94,17 @@ fn get_next_log_id(database_url: &str) -> Result<u32, Error> {
         .first::<Option<i32>>(&mut connection)
     {
         Ok(max_id) => max_id.unwrap_or(0),
-        Err(err) => panic!("{}", err),
+        Err(err) => {
+            let err = Error::DieselResult(DieselResultError(err));
+            error!("{err}");
+            return Err(err);
+        }
     };
 
     if max_id.is_negative() {
-        panic!("Log ID cannot be negative: {}", max_id);
+        let err = Error::NegativeLogID(max_id);
+        error!("{err}");
+        return Err(err);
     }
 
     Ok(max_id as u32)

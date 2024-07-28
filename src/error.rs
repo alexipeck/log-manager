@@ -19,6 +19,8 @@ pub enum Error {
     DeserializingField(String, SerdeError),
     #[error("Builder({0})")]
     Builder(BuilderError),
+    #[error("NegativeLogID({0})")]
+    NegativeLogID(i32),
     #[error("Errors({:?})", 0)]
     Errors(Vec<Self>),
 }
