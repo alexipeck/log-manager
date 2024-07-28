@@ -141,9 +141,10 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
         Ok(manager)
     }
     async fn start_server(manager: Arc<Self>) {
-        tokio::task::spawn(async move {
+        //task thread disabled until there is actually a need
+        /* tokio::task::spawn(async move {
             //
-        });
+        }); */
     }
 
     pub fn save_log(&self, log: SimpleLog, source: S) -> Result<usize, Error> {
