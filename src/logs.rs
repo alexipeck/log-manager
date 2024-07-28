@@ -67,6 +67,17 @@ pub struct Log<S> {
     content: String,
 }
 
+impl<S> Log<S> {
+    pub fn into_simple_log(self) -> SimpleLog {
+        SimpleLog {
+            timestamp: self.timestamp,
+            level: self.level,
+            location: self.location,
+            content: self.content,
+        }
+    }
+}
+
 macro_rules! ok_or_return_err {
     ($t:expr, $field_name:expr) => {
         match $t {
