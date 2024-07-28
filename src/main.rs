@@ -1,4 +1,4 @@
-use std::io::stdout;
+use std::{io::stdout, time::Instant};
 
 use log_manager::{
     error::Error,
@@ -100,16 +100,13 @@ async fn main() -> Result<(), Error> {
         }
     } */
     for i in 1..50 {
-        /* log_manager.save_log(
-            SimpleLog::generate_log(Level::Info, "src/test".into(), i.to_string()),
-            LogSource::SomeOtherSource(SubSource::Thermometer),
-        )?; */
         log_manager.save_log(
             SimpleLog::generate_log(Level::Info, "src/test".into(), i.to_string()),
             LogSource::Agent(uuid!("f068c603-b2d8-4aab-a06b-478dea93bcea")),
         )?;
     }
     for i in 1..10 {
+        let now = Instant::now();
         let results = log_manager.search(
             Some(LogSource::Agent(uuid!(
                 "f068c603-b2d8-4aab-a06b-478dea93bcea"
@@ -120,6 +117,7 @@ async fn main() -> Result<(), Error> {
             }),
             "".into(),
         )?;
+        debug!("{}ns", now.elapsed().as_nanos());
         debug!("Page {i}");
         for result in results {
             debug!("{:?}", result);
