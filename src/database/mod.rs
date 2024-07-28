@@ -5,11 +5,7 @@ use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use std::error::Error as StdError;
 use tracing::error;
 
-use crate::{
-    database::model::LogModel,
-    error::{DieselConnectionError, Error},
-    schema::log::{self as log_table, dsl::log as log_data},
-};
+use crate::error::{DieselConnectionError, Error};
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 

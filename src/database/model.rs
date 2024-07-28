@@ -1,12 +1,11 @@
-use std::{str::FromStr, sync::atomic::Ordering};
-
-use crate::error::{Error, SerdeError};
-use crate::schema::log;
-use crate::{logs::SimpleLog, NEXT_LOG_ID};
 use diesel::{Identifiable, Insertable, Queryable};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use uuid::Uuid;
+use std::sync::atomic::Ordering;
+
+use crate::error::Error;
+use crate::schema::log;
+use crate::{logs::SimpleLog, NEXT_LOG_ID};
 
 #[macro_export]
 macro_rules! serialize_or_return_err {

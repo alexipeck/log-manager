@@ -1,11 +1,10 @@
-use std::{io::stdout, time::Instant};
-
 use log_manager::{
     error::Error,
     logs::{Level, SimpleLog},
     manager::{Builder, Pagination},
 };
 use serde::{Deserialize, Serialize};
+use std::{io::stdout, time::Instant};
 use tracing::{debug, info};
 use tracing_subscriber::{filter::LevelFilter, layer::SubscriberExt, Layer, Registry};
 use uuid::{uuid, Uuid};

@@ -11,7 +11,7 @@ use diesel::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tokio::sync::Notify;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 use crate::{
     database::{establish_connection, model::LogModel, run_migrations, MIGRATIONS},
@@ -140,7 +140,7 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
         Self::start_server(manager.to_owned()).await;
         Ok(manager)
     }
-    async fn start_server(manager: Arc<Self>) {
+    async fn start_server(_manager: Arc<Self>) {
         //task thread disabled until there is actually a need
         /* tokio::task::spawn(async move {
             //

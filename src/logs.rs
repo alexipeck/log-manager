@@ -60,6 +60,7 @@ impl fmt::Display for Level {
 pub struct Log<S> {
     id: i32,
     source: S,
+    ///RFC3339
     timestamp: String,
     level: Level,
     location: String,
@@ -94,6 +95,7 @@ impl<S: Serialize + DeserializeOwned> Log<S> {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleLog {
+    ///RFC3339
     pub timestamp: String,
     pub level: Level,
     pub location: String,
@@ -101,14 +103,6 @@ pub struct SimpleLog {
 }
 
 impl SimpleLog {
-    fn new(timestamp: String, level: Level, location: String, content: String) -> Self {
-        Self {
-            timestamp,
-            level,
-            location,
-            content,
-        }
-    }
     pub fn generate_log(level: Level, location: String, content: String) -> Self {
         Self {
             timestamp: Utc::now().to_rfc3339(),
