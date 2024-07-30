@@ -7,7 +7,7 @@ use tracing::error;
 
 use crate::error::{DieselConnectionError, Error};
 
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 pub fn establish_connection(database_url: &str) -> Result<SqliteConnection, Error> {
     match SqliteConnection::establish(database_url) {

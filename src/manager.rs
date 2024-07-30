@@ -16,11 +16,11 @@ use tracing::{error, info, warn};
 
 use crate::{
     database::{establish_connection, model::LogModel, run_migrations, MIGRATIONS},
-    error::{BuilderError, DieselResultError, Error},
-    logs::{Log, SimpleLog},
+    error::{BuilderError, DieselResultError, Error, SerdeError},
+    logs::{Level, Log, SimpleLog},
     schema::log::{
-        self as log_table, dsl::content as content_db, dsl::log as log_data,
-        dsl::source as source_db,
+        self as log_table,
+        dsl::{content as content_db, level as level_db, log as log_data, source as source_db},
     },
     serialize_or_return_err, NEXT_LOG_ID,
 };
@@ -168,7 +168,22 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
         source: Option<S>,
         pagination: Option<Pagination>,
         content_search: Option<&str>,
+        levels: &[Level],
     ) -> Result<(i64, Vec<Log<S>>), Error> {
+        let levels = {
+            let mut levels_: Vec<String> = Vec::new();
+            for level in levels.iter() {
+                match serde_json::to_string(level) {
+                    Ok(level_serialized) => levels_.push(level_serialized),
+                    Err(err) => {
+                        let err = Error::SerializingField("level".into(), SerdeError(err));
+                        warn!("{err}");
+                        return Err(err);
+                    }
+                }
+            }
+            levels_
+        };
         let mut sqlite_connection = establish_connection(&self.database_url)?;
         let mut query = log_data.into_boxed();
         let mut count_query = log_data.into_boxed();
@@ -176,6 +191,10 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
             let source_serialized = serialize_or_return_err!(&source, "source");
             query = query.filter(source_db.eq(source_serialized.to_owned()));
             count_query = count_query.filter(source_db.eq(source_serialized));
+        }
+        if !levels.is_empty() {
+            query = query.filter(level_db.eq_any(levels.iter()));
+            count_query = count_query.filter(level_db.eq_any(levels.iter()));
         }
         if let Some(content_search) = content_search {
             query = query.filter(content_db.like(format!("%{content_search}%")));

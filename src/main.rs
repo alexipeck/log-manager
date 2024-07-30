@@ -106,8 +106,13 @@ async fn main() -> Result<(), Error> {
             SimpleLog::generate_log(Level::Info, "src/test".into(), i.to_string()),
             LogSource::Agent(uuid!("f068c603-b2d8-4aab-a06b-478dea93bcea")),
         )?;
+        log_manager.save_log(
+            SimpleLog::generate_log(Level::Debug, "src/test".into(), i.to_string()),
+            LogSource::Agent(uuid!("f068c603-b2d8-4aab-a06b-478dea93bcea")),
+        )?;
     }
-    for i in 1..10 {
+    let (total_count, results) = log_manager.search(None, None, "".into(), &[Level::Debug])?;
+    for i in 1..(total_count / 10) {
         let now = Instant::now();
         let (total_count, results) = log_manager.search(
             Some(LogSource::Agent(uuid!(
@@ -118,6 +123,7 @@ async fn main() -> Result<(), Error> {
                 page_size: 2,
             }),
             "".into(),
+            &[Level::Debug],
         )?;
         debug!("Total before pagination: {total_count}");
         debug!("{}ns", now.elapsed().as_nanos());
@@ -126,12 +132,11 @@ async fn main() -> Result<(), Error> {
             debug!("{:?}", result);
         }
     }
-    let (total_count, results) = log_manager.search(None, None, "10".into())?;
-    debug!("Search test (total before pagination: {total_count})");
+    debug!("Search total (total before pagination: {total_count})");
     for result in results {
         debug!("{:?}", result);
     }
     log_manager.stop();
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    tokio::time::sleep(Duration::from_millis(500)).await;
     Ok(())
 }
