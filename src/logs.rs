@@ -2,7 +2,7 @@ use crate::{
     database::model::LogModel,
     error::{Error, SerdeError},
 };
-use chrono::Utc;
+use chrono::{TimeDelta, Utc};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::fmt::{self, Debug};
 use tracing::metadata::Level as TracingLevel;
@@ -114,6 +114,19 @@ pub struct SimpleLog {
 }
 
 impl SimpleLog {
+    pub fn generate_log_with_offset(
+        level: Level,
+        location: String,
+        content: String,
+        offset: TimeDelta,
+    ) -> Self {
+        Self {
+            timestamp: (Utc::now() + offset).to_rfc3339(),
+            level,
+            location,
+            content,
+        }
+    }
     pub fn generate_log(level: Level, location: String, content: String) -> Self {
         Self {
             timestamp: Utc::now().to_rfc3339(),
