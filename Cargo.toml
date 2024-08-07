@@ -1,7 +1,7 @@
 [package]
 authors = ["Alexi Peck <alexinicolaspeck@gmail.com>"]
 name = "log-manager"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 
 [lib]
@@ -12,14 +12,15 @@ default = []
 
 [dependencies]
 chrono = "0.4.38"
-diesel = {version = "2.2.2", default-features = false, features = ["sqlite", "extras", "32-column-tables"]}
+diesel = { version = "2.2.2", default-features = false, features = ["sqlite", "extras", "32-column-tables"] }
 diesel_migrations = "2.2.0"
-tokio = {version = "1.39.2", default-features = false, features = ["macros", "rt-multi-thread"]}
-peck-lib = {git = "https://github.com/alexipeck/peck-lib.git", features = ["logging"]}
-serde = {version = "1.0.204", features = ["derive"]}
-serde_json = {version = "1.0.122"}
+tokio = { version = "1.39.2", default-features = false, features = ["macros", "rt-multi-thread"] }
+peck-lib = { git = "https://github.com/alexipeck/peck-lib.git", features = ["logging"] }
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = { version = "1.0.122" }
 thiserror = "1.0.63"
 tracing = "0.1.40"
-uuid = {version = "1.10.0", features = ["v4", "serde"]}
-tracing-appender = {version = "0.2.3"}
-tracing-subscriber = {version = "0.3.18"}
+uuid = { version = "1.10.0", features = ["v4", "serde"] }
+tracing-appender = { version = "0.2.3" }
+tracing-subscriber = { version = "0.3.18" }
+parking_lot = { version = "0.12.3" }

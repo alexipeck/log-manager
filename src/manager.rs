@@ -10,6 +10,7 @@ use diesel::{
     dsl::{count_star, max},
     ExpressionMethods, QueryDsl, RunQueryDsl, SqliteConnection, TextExpressionMethods,
 };
+use parking_lot::Mutex;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tokio::sync::Notify;
 use tracing::{error, info, warn};
@@ -120,6 +121,7 @@ pub struct LogManager<S: Serialize + DeserializeOwned> {
     stop: Arc<AtomicBool>,
     stop_notify: Arc<Notify>,
     database_url: String,
+    internal_lock: Arc<Mutex<()>>,
     _phantom: PhantomData<S>,
 }
 impl<S: Serialize + DeserializeOwned> LogManager<S> {
@@ -142,6 +144,7 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
             stop,
             stop_notify,
             database_url,
+            internal_lock: Arc::new(Mutex::new(())),
             _phantom: PhantomData,
         });
         Self::start_server(manager.to_owned()).await;
@@ -155,6 +158,7 @@ impl<S: Serialize + DeserializeOwned> LogManager<S> {
     }
 
     pub fn save_log(&self, log: SimpleLog, source: S) -> Result<usize, Error> {
+        let _guard = self.internal_lock.lock();
         let sqlite_connection = &mut establish_connection(&self.database_url)?;
         let log = LogModel::from(log, source)?;
         let insert_into = diesel::insert_into(log_table::table);
